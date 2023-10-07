@@ -20,6 +20,6 @@ def demo(response: Response):
         response.headers['X-Vendor-ErrorCode'] = '0'
         return { 'message': 'good' }
     else:
-        response.headers['X-Vendor-ErrorCode'] = '0'
+        response.headers['X-Vendor-ErrorCode'] = '1'
         response.status_code = status.HTTP_400_BAD_REQUEST
         return { 'message': 'bad' }
