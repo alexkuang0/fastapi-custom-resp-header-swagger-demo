@@ -2,24 +2,35 @@ from fastapi import FastAPI, Response, status, HTTPException
 from pydantic import BaseModel
 from random import randint
 
+
 class DemoResponse(BaseModel):
     message: str
 
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
 app = FastAPI()
 
-VENDOR_CUSTOM_RESP_HEADERS = {
-    'X-Vendor-ErrorCode': {
-        'description': '0 means normal, 1 means error.',
-        'schema': { 'type': 'number' }
-    }
-}
+RESP_HEADERS = [{  # X-Vendor-ErrorCode
+    'description': '0 means normal, 1 means error.',
+    'schema': {'type': 'number'},
+}, {  # X-Vendor-ErrorMessage
+    'description': 'error message for given error code',
+    'schema': {'type': 'string'},
+}, {  # X-Vendor-RequestId
+    'description': 'request id for the given error response',
+    'schema': {'type': 'string'}
+}]
+
 
 @app.get('/demo', responses={
-    200: { 'headers': VENDOR_CUSTOM_RESP_HEADERS },
-    400: { 'headers': VENDOR_CUSTOM_RESP_HEADERS },
-    500: { 'headers': VENDOR_CUSTOM_RESP_HEADERS },
+    200: {'headers': {'X-Vendor-ErrorCode': RESP_HEADERS[0]}, 'model': DemoResponse},
+    400: {'headers': {'X-Vendor-ErrorCode': RESP_HEADERS[0], 'X-Vendor-ErrorMessage': RESP_HEADERS[1]}, 'model': ErrorResponse},
+    500: {'headers': {'X-Vendor-ErrorCode': RESP_HEADERS[0], 'X-Vendor-RequestId': RESP_HEADERS[2]}, 'model': ErrorResponse},
 })
-def demo(response: Response) -> DemoResponse:
+def demo(response: Response):
     # randomly response with 200, 400 or 500
     status = randint(0, 2)
 
@@ -29,12 +40,17 @@ def demo(response: Response) -> DemoResponse:
             return DemoResponse(message='good')
         case 1:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                headers={ 'X-Vendor-ErrorCode': '1' },
+                status_code=400,
+                headers={
+                    'X-Vendor-ErrorCode': '1',
+                    'X-Vendor-ErrorMessage': 'Something went wrong on your end.',
+                },
             )
         case 2:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={ 'request_id': '095e5265-1788-4a3e-a94f-67a09d021933' },
-                headers={ 'X-Vendor-ErrorCode': '2' },
+                status_code=500,
+                headers={
+                    'X-Vendor-ErrorCode': '2',
+                    'X-Vendor-RequestId': '8b8461cd-3120-4687-81a9-e2dc25705b7e',
+                },
             )
